@@ -1,0 +1,126 @@
+service_name: hello-world
+team_name: gheine
+port: 8080
+healthcheck_url: /_ping_
+logs:
+  - file: /var/log/messages
+    group_name: hello_world-syslog
+    datetime_format: '%b %m %H:%M:%S'
+  - file: /var/log/hello-world/application.log
+    group_name: hello_world-application
+    datetime_format: '%Y-%m-%d %H:%M:%S,%f'
+environments:
+  - name: myaws
+    # AWS profile name
+    aws_profile: myaws
+    # AWS region
+    aws_region: us-east-1
+    # IAM Role that allows autoscaling, ec2, tags, sns, cloudwatch and elasticloadbalancing
+    deploy_arn: arn:aws:iam::000000000000:role/deploy-role
+    # S3 bucket for deployment bundles
+    deployment_bucket: my-deployments
+    # Fill in codedeploy application id once stacks have been created
+    deployment_application_id: TBD
+    stacks:
+      - stack_name: production
+        stack_type: production
+        stack_template: NovaAutoScalingExternalHTTPSStack
+        stack_template_version: "1.0"
+        stack_deploy_config: OneAtATime
+        deployment_options:
+          - --log-driver: syslog
+          - --net: host
+          - --restart: always
+        deployment_variables:
+          - CONFIG_ENVIRONMENT: production
+        deployment_volumes:
+          - /var/log/hello-world: /opt/hello_world/logs
+        # Fill in deployment group id once stack has been created
+        deployment_group: TBD
+        # Security groups that open ports 22 (ssh) and 8080 from VPC
+        InstanceSecurityGroups: sg-0000000a,sg-0000000b
+        # Private (non-public) subnets for EC2 instances, one for each AZ
+        VpcSubnetIds: subnet-0000000a,subnet-0000000b
+        # Public subnets for ELB, one for each AZ
+        ElbVpcSubnetIds: subnet-0000000c,subnet-0000000d
+        # Security group that opens ports 443 (https) from anywhere
+        ElbSecurityGroups: sg-0000000c
+        # SSH keypair
+        FallbackKeyName: my-ssh-key
+        # Production/Live DNS entry
+        DNS: hello-world-prod-us-east-1.example.com
+        MinInstances: 2
+        MaxInstances: 5
+        ScaleUpThreshold: "6"
+        ScaleUpPeriod: 300
+        ScaleDownThreshold: "3"
+        ScaleDownPeriod: 300
+        ScalingDimension: AutoScalingGroup
+        ScalingMetricName: CPUUtilization
+        ScalingStatistic: Average
+        TerminationPolicy: ClosestToNextInstanceHour
+        AutoScalingGroupHealthCheckType: EC2
+        # SSL Certificate for example.com
+        SSLCertificateArn: arn:aws:acm:us-east-1:000000000000:certificate/00000000-0000-0000-0000-000000000000
+        Ami: ami-1588f003
+        InstanceType: t2.nano
+
+      - stack_name: canary
+        stack_type: live-canary
+        stack_template: NovaLiveCanaryStack
+        stack_template_version: "1.0"
+        stack_deploy_config: AllAtOnce
+        deployment_options:
+          - --log-driver: syslog
+          - --net: host
+          - --restart: always
+        deployment_variables:
+          - CONFIG_ENVIRONMENT: canary
+        deployment_volumes:
+          - /var/log/hello-world: /opt/hello-world/logs
+        # Fill in deployment group id once stack has been created
+        deployment_group: TBD
+        # Security groups that open ports 22 (ssh) and 8080 from VPC
+        InstanceSecurityGroups: sg-0000000a,sg-0000000b
+        # Private (non-public) subnets for EC2 instances, one for each AZ
+        VpcSubnetIds: subnet-0000000a,subnet-0000000b
+        # SSH keypair
+        FallbackKeyName: my-ssh-key
+        LoadBalancer: { "Fn::GetAtt": [ "Production", "Outputs.LoadBalancer" ] }
+        AutoScalingGroupHealthCheckType: EC2
+        Ami: ami-1588f003
+        InstanceType: t2.nano
+
+      - stack_name: dark
+        stack_type: dark-canary
+        stack_template: NovaGeneralExternalHTTPSStack
+        stack_template_version: "1.0"
+        stack_deploy_config: AllAtOnce
+        deployment_options:
+          - --log-driver: syslog
+          - --net: host
+          - --restart: always
+        deployment_variables:
+          - CONFIG_ENVIRONMENT: dark
+        deployment_volumes:
+          - /var/log/hello-world: /opt/hello-world/logs
+        # Fill in deployment group id once stack has been created
+        deployment_group: TBD
+        AutoScalingGroupHealthCheckType: EC2
+        # Security groups that open ports 22 (ssh) and 8080 from VPC
+        InstanceSecurityGroups: sg-0000000a,sg-0000000b
+        # Private (non-public) subnets for EC2 instances, one for each AZ
+        VpcSubnetIds: subnet-0000000a,subnet-0000000b
+        # Public subnets for ELB, one for each AZ
+        ElbVpcSubnetIds: subnet-0000000c,subnet-0000000d
+        # Security group that opens ports 443 (https) from anywhere
+        ElbSecurityGroups: sg-0000000c
+        # SSH keypair
+        FallbackKeyName: my-ssh-key
+        # Dark instance DNS entry
+        DNS: hello-world-dark-us-east-1.example.com
+        # SSL Certificate for example.com
+        SSLCertificateArn: arn:aws:acm:us-east-1:000000000000:certificate/00000000-0000-0000-0000-000000000000
+        Ami: ami-1588f003
+        InstanceType: t2.nano
+

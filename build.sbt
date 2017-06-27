@@ -1,5 +1,5 @@
 
-name := "hello_world"
+name := "hello-world"
 
 version := "git describe --tags --dirty --always".!!.stripPrefix("v").trim
 
@@ -10,7 +10,8 @@ val http4sVersion = "0.15.13a"
 libraryDependencies ++= Seq(
   "org.http4s"           %% "http4s-core"               % http4sVersion,
   "org.http4s"           %% "http4s-dsl"                % http4sVersion,
-  "org.http4s"           %% "http4s-blaze-server"       % http4sVersion
+  "org.http4s"           %% "http4s-blaze-server"       % http4sVersion,
+  "ch.qos.logback"        % "logback-classic"           % "1.2.3"
 )
 
 dependencyOverrides ++= Set("org.slf4j" % "slf4j-api" % "1.7.25" % "it")
@@ -21,6 +22,12 @@ resolvers ++= Seq(
 )
 
 scalacOptions ++= Seq("-encoding", "UTF-8", "-deprecation", "-feature", "-unchecked", "-language:_")
+
+javaOptions in run ++= Seq("-Dlogback.configurationFile=conf/logger.xml")
+
+javaOptions in Runtime ++= Seq("-Dlogback.configurationFile=conf/logger.xml")
+
+javaOptions in Test ++= Seq("-Dlogback.configurationFile=conf/logger.xml")
 
 cancelable := true
 
@@ -45,3 +52,4 @@ mappings in Universal ++= {
   } yield file -> s"/conf/$relativePath"
 }
 
+bashScriptConfigLocation := Some("${app_home}/../conf/application.ini")
